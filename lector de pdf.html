@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Podcast Reader - Lectura Infinita</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+    <style>
+        :root { --bg: #0f0f0f; --card: #1a1a1a; --accent: #1db954; --text: #eeeeee; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text); display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        .container { max-width: 800px; width: 100%; background: var(--card); padding: 30px; border-radius: 15px; box-shadow: 0 10px 40px rgba(0,0,0,0.7); }
+        
+        /* Controles de navegación */
+        #chapters { display: flex; gap: 8px; overflow-x: auto; padding: 10px 0; margin-bottom: 15px; border-bottom: 1px solid #333; }
+        .chapter-btn { background: #333; color: var(--accent); border: 1px solid var(--accent); padding: 6px 15px; border-radius: 20px; cursor: pointer; white-space: nowrap; font-size: 12px; }
+        
+        .controls { display: flex; justify-content: center; gap: 15px; margin: 20px 0; }
+        button.main-btn { background: var(--accent); border: none; padding: 15px 30px; border-radius: 50px; color: black; font-weight: bold; cursor: pointer; font-size: 1.1rem; }
+        
+        /* Lista de lectura */
+        #playlist { height: 400px; overflow-y: auto; background: #111; border-radius: 10px; padding: 15px; line-height: 1.6; }
+        .sentence { padding: 8px; border-radius: 5px; cursor: pointer; color: #777; transition: 0.3s; }
+        .sentence.active { background: #222; color: #fff; border-left: 4px solid var(--accent); padding-left: 12px; }
+        
+        select { background: #222; color: white; border: 1px solid #444; padding: 8px; border-radius: 5px; width: 100%; margin-bottom: 15px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2 style="text-align: center; color: var(--accent);">🎙️ Podcast Reader Pro</h2>
+    
+    <input type="file" id="pdf-upload" accept="application/pdf" style="margin-bottom: 20px;">
+    
+    <div id="chapters"></div>
+
+    <select id="voice-select"></select>
+
+    <div id="playlist">
+        <div style="color: #555; text-align: center; margin-top: 150px;">Sube un PDF para generar el guion...</div>
+    </div>
+
+    <div class="controls">
+        <button id="btn-play" class="main-btn">REPRODUCIR TODO</button>
+        <button id="btn-stop" style="background:transparent; color:red; border:1px solid red; padding:10px 20px; border-radius:50px; cursor:pointer;">Detener</button>
+    </div>
+
+    <div id="status" style="text-align: center; font-size: 0.8rem; color: #888;">Listo.</div>
+</div>
+
+<script>
+    const pdfjsLib = window['pdfjs-dist/build/pdf'];
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+
+    const synth = window.speechSynthesis;
+    let fragments = [];
+    let currentIndex = 0;
+    let isPlaying = false;
+
+    // Cargar voces
+    function populateVoices() {
+        const select = document.getElementById('voice-select');
+        const voices = synth.getVoices();
+        select.innerHTML = voices
+            .map((v, i) => `<option value="${i}" ${v.lang.includes('es') ? 'selected' : ''}>${v.name} (${v.lang})</option>`)
+            .join('');
+    }
+    synth.onvoiceschanged = populateVoices;
+    populateVoices();
+
+    // Procesar PDF
+    document.getElementById('pdf-upload').addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        document.getElementById('status').innerText = "Extrayendo texto...";
+        const pdf = await pdfjsLib.getDocument(await file.arrayBuffer()).promise;
+        let text = "";
+        for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i);
+            const content = await page.getTextContent();
+            text += content.items.map(s => s.str).join(" ") + " ";
+        }
+        
+        renderText(text);
+    });
+
+    function renderText(text) {
+        // Limpiar y dividir por frases (puntos, exclamaciones, interrogaciones)
+        fragments = text.match(/[^.!?]+[.!?]+/g) || [text];
+        const playlist = document.getElementById('playlist');
+        const chapters = document.getElementById('chapters');
+        playlist.innerHTML = '';
+        chapters.innerHTML = '';
+
+        fragments.forEach((frag, i) => {
+            const cleanFrag = frag.trim();
+            if(!cleanFrag) return;
+
+            // Crear item en la lista
+            const div = document.createElement('div');
+            div.className = 'sentence';
+            div.id = `s-${i}`;
+            div.innerText = cleanFrag;
+            div.onclick = () => jumpTo(i);
+            playlist.appendChild(div);
+
+            // Crear marcadores de capítulos (si detecta palabras clave)
+            const low = cleanFrag.toLowerCase();
+            if(low.includes('capítulo') || low.includes('capitulo') || low.includes('introducción')) {
+                const btn = document.createElement('button');
+                btn.className = 'chapter-btn';
+                btn.innerText = cleanFrag.substring(0, 15) + "...";
+                btn.onclick = () => jumpTo(i);
+                chapters.appendChild(btn);
+            }
+        });
+        document.getElementById('status').innerText = "Lectura lista. " + fragments.length + " oraciones cargadas.";
+    }
+
+    // FUNCIÓN CORE: Lee sin detenerse
+    function speak(index) {
+        if (index >= fragments.length || !isPlaying) {
+            isPlaying = false;
+            document.getElementById('status').innerText = "Fin de la lectura.";
+            return;
+        }
+
+        currentIndex = index;
+        const utterance = new SpeechSynthesisUtterance(fragments[index]);
+        const voices = synth.getVoices();
+        utterance.voice = voices[document.getElementById('voice-select').value];
+        utterance.rate = 0.95;
+
+        // Resaltado visual y auto-scroll
+        document.querySelectorAll('.sentence').forEach(s => s.classList.remove('active'));
+        const el = document.getElementById(`s-${index}`);
+        if(el) {
+            el.classList.add('active');
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        // El truco para "No detenerse": 
+        // 1. Cancelamos cualquier proceso fantasma antes de empezar
+        // 2. Usamos el evento onend para disparar la siguiente inmediatamente
+        utterance.onend = () => {
+            if(isPlaying) speak(index + 1);
+        };
+
+        utterance.onerror = () => {
+            if(isPlaying) speak(index + 1); // Si falla una frase, salta a la siguiente
+        };
+
+        synth.speak(utterance);
+    }
+
+    function jumpTo(index) {
+        synth.cancel();
+        isPlaying = true;
+        speak(index);
+    }
+
+    document.getElementById('btn-play').addEventListener('click', () => {
+        if (isPlaying) {
+            synth.pause();
+            isPlaying = false;
+            document.getElementById('btn-play').innerText = "REANUDAR";
+        } else {
+            if (synth.paused) {
+                synth.resume();
+            } else {
+                speak(currentIndex);
+            }
+            isPlaying = true;
+            document.getElementById('btn-play').innerText = "PAUSAR";
+        }
+    });
+
+    document.getElementById('btn-stop').addEventListener('click', () => {
+        isPlaying = false;
+        synth.cancel();
+        currentIndex = 0;
+        document.getElementById('btn-play').innerText = "REPRODUCIR TODO";
+        document.getElementById('status').innerText = "Detenido.";
+    });
+
+    // Pequeño hack para evitar que Chrome/Edge maten el proceso en textos de 1 hora+
+    setInterval(() => {
+        if (isPlaying && !synth.paused) {
+            synth.pause();
+            synth.resume();
+        }
+    }, 10000); 
+</script>
+
+</body>
+</html>
