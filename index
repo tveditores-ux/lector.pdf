@@ -3,49 +3,194 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Podcast Reader - Lectura Infinita</title>
+    <title>E-Ink Podcast Reader Pro</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
     <style>
-        :root { --bg: #0f0f0f; --card: #1a1a1a; --accent: #1db954; --text: #eeeeee; }
-        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text); display: flex; flex-direction: column; align-items: center; padding: 20px; }
-        .container { max-width: 800px; width: 100%; background: var(--card); padding: 30px; border-radius: 15px; box-shadow: 0 10px 40px rgba(0,0,0,0.7); }
-        
-        /* Controles de navegación */
-        #chapters { display: flex; gap: 8px; overflow-x: auto; padding: 10px 0; margin-bottom: 15px; border-bottom: 1px solid #333; }
-        .chapter-btn { background: #333; color: var(--accent); border: 1px solid var(--accent); padding: 6px 15px; border-radius: 20px; cursor: pointer; white-space: nowrap; font-size: 12px; }
-        
-        .controls { display: flex; justify-content: center; gap: 15px; margin: 20px 0; }
-        button.main-btn { background: var(--accent); border: none; padding: 15px 30px; border-radius: 50px; color: black; font-weight: bold; cursor: pointer; font-size: 1.1rem; }
-        
-        /* Lista de lectura */
-        #playlist { height: 400px; overflow-y: auto; background: #111; border-radius: 10px; padding: 15px; line-height: 1.6; }
-        .sentence { padding: 8px; border-radius: 5px; cursor: pointer; color: #777; transition: 0.3s; }
-        .sentence.active { background: #222; color: #fff; border-left: 4px solid var(--accent); padding-left: 12px; }
-        
-        select { background: #222; color: white; border: 1px solid #444; padding: 8px; border-radius: 5px; width: 100%; margin-bottom: 15px; }
+        :root {
+            --bg: #f4f4f4;
+            --text: #1a1a1a;
+            --accent: #4a4a4a;
+            --border: #d1d1d1;
+            --active-bg: #1a1a1a;
+            --active-text: #f4f4f4;
+        }
+
+        body.dark-mode {
+            --bg: #121212;
+            --text: #b0b0b0;
+            --accent: #888888;
+            --border: #333333;
+            --active-bg: #e0e0e0;
+            --active-text: #121212;
+        }
+
+        body {
+            font-family: 'Georgia', serif;
+            background-color: var(--bg);
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            margin: 0;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .container {
+            max-width: 800px;
+            width: 90%;
+            border: 2px solid var(--text);
+            padding: 30px;
+            background: var(--bg);
+            box-shadow: 8px 8px 0px var(--border);
+            position: relative;
+        }
+
+        #theme-toggle {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: none;
+            border: 1px solid var(--text);
+            color: var(--text);
+            cursor: pointer;
+            padding: 5px 10px;
+            font-family: 'Georgia', serif;
+            font-size: 12px;
+        }
+
+        h1 {
+            text-align: center;
+            border-bottom: 2px solid var(--text);
+            padding-bottom: 10px;
+            font-variant: small-caps;
+            letter-spacing: 2px;
+        }
+
+        #chapters {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            padding: 15px 0;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .chapter-btn {
+            background: var(--bg);
+            color: var(--text);
+            border: 1px solid var(--text);
+            padding: 5px 15px;
+            cursor: pointer;
+            font-size: 13px;
+            white-space: nowrap;
+            font-family: 'Georgia', serif;
+        }
+
+        .settings-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            align-items: center;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 20px 0;
+            padding: 10px;
+            border: 1px solid var(--text);
+        }
+
+        button.main-btn {
+            background: var(--text);
+            color: var(--bg);
+            border: none;
+            padding: 10px 25px;
+            font-weight: bold;
+            cursor: pointer;
+            text-transform: uppercase;
+        }
+
+        #playlist {
+            height: 500px;
+            overflow-y: auto;
+            background: var(--bg);
+            border: 1px solid var(--text);
+            padding: 20px;
+            line-height: 1.8;
+            text-align: justify;
+            /* El tamaño se controla mediante JS */
+        }
+
+        .sentence {
+            padding: 2px 4px;
+            cursor: pointer;
+            display: inline;
+            color: var(--accent);
+            transition: 0.1s;
+        }
+
+        .sentence.active {
+            background: var(--active-bg);
+            color: var(--active-text);
+            font-weight: bold;
+        }
+
+        select, input[type="range"] {
+            font-family: 'Georgia', serif;
+            padding: 5px;
+            border: 1px solid var(--text);
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        .font-control {
+            display: flex;
+            flex-direction: column;
+            font-size: 0.8rem;
+            flex-grow: 1;
+        }
+
+        #status { font-size: 0.8rem; text-align: right; margin-top: 5px; font-style: italic; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2 style="text-align: center; color: var(--accent);">🎙️ Podcast Reader Pro</h2>
+    <button id="theme-toggle">Modo Oscuro</button>
+    <h1>Diario de Lectura</h1>
     
-    <input type="file" id="pdf-upload" accept="application/pdf" style="margin-bottom: 20px;">
+    <div style="text-align: center; margin-bottom: 20px;">
+        <input type="file" id="pdf-upload" accept="application/pdf">
+    </div>
     
     <div id="chapters"></div>
 
-    <select id="voice-select"></select>
+    <div class="settings-row">
+        <div style="flex-grow: 2;">
+            <label style="font-size: 0.7rem;">Narrador:</label>
+            <select id="voice-select" style="width: 100%;"></select>
+        </div>
+        <div class="font-control">
+            <label>Tamaño de letra: <span id="font-size-val">18</span>px</label>
+            <input type="range" id="font-slider" min="12" max="36" value="18">
+        </div>
+    </div>
 
-    <div id="playlist">
-        <div style="color: #555; text-align: center; margin-top: 150px;">Sube un PDF para generar el guion...</div>
+    <div id="playlist" style="font-size: 18px;">
+        <div style="text-align: center; margin-top: 200px; opacity: 0.5;">
+            — Inserte un archivo para digitalizar el texto —
+        </div>
     </div>
 
     <div class="controls">
-        <button id="btn-play" class="main-btn">REPRODUCIR TODO</button>
-        <button id="btn-stop" style="background:transparent; color:red; border:1px solid red; padding:10px 20px; border-radius:50px; cursor:pointer;">Detener</button>
+        <button id="btn-play" class="main-btn">Leer</button>
+        <button id="btn-stop" style="background:none; border:none; text-decoration: underline; color: var(--text); cursor:pointer;">Detener</button>
     </div>
 
-    <div id="status" style="text-align: center; font-size: 0.8rem; color: #888;">Listo.</div>
+    <div id="status">Esperando...</div>
 </div>
 
 <script>
@@ -57,23 +202,39 @@
     let currentIndex = 0;
     let isPlaying = false;
 
-    // Cargar voces
+    // Control de Tamaño de Fuente
+    const fontSlider = document.getElementById('font-slider');
+    const playlist = document.getElementById('playlist');
+    const fontValLabel = document.getElementById('font-size-val');
+
+    fontSlider.addEventListener('input', (e) => {
+        const size = e.target.value;
+        playlist.style.fontSize = size + 'px';
+        fontValLabel.innerText = size;
+    });
+
+    // Control de Tema
+    document.getElementById('theme-toggle').addEventListener('click', () => {
+        document.body.classList.toggle('dark-mode');
+        const isDark = document.body.classList.contains('dark-mode');
+        document.getElementById('theme-toggle').innerText = isDark ? "Modo Claro" : "Modo Oscuro";
+    });
+
     function populateVoices() {
         const select = document.getElementById('voice-select');
         const voices = synth.getVoices();
         select.innerHTML = voices
-            .map((v, i) => `<option value="${i}" ${v.lang.includes('es') ? 'selected' : ''}>${v.name} (${v.lang})</option>`)
+            .map((v, i) => `<option value="${i}" ${v.lang.includes('es') ? 'selected' : ''}>${v.name}</option>`)
             .join('');
     }
     synth.onvoiceschanged = populateVoices;
     populateVoices();
 
-    // Procesar PDF
     document.getElementById('pdf-upload').addEventListener('change', async (e) => {
         const file = e.target.files[0];
         if (!file) return;
         
-        document.getElementById('status').innerText = "Extrayendo texto...";
+        document.getElementById('status').innerText = "Procesando...";
         const pdf = await pdfjsLib.getDocument(await file.arrayBuffer()).promise;
         let text = "";
         for (let i = 1; i <= pdf.numPages; i++) {
@@ -81,33 +242,29 @@
             const content = await page.getTextContent();
             text += content.items.map(s => s.str).join(" ") + " ";
         }
-        
         renderText(text);
     });
 
     function renderText(text) {
-        // Limpiar y dividir por frases (puntos, exclamaciones, interrogaciones)
         fragments = text.match(/[^.!?]+[.!?]+/g) || [text];
-        const playlist = document.getElementById('playlist');
+        const playlistDiv = document.getElementById('playlist');
         const chapters = document.getElementById('chapters');
-        playlist.innerHTML = '';
+        playlistDiv.innerHTML = '';
         chapters.innerHTML = '';
 
         fragments.forEach((frag, i) => {
             const cleanFrag = frag.trim();
             if(!cleanFrag) return;
 
-            // Crear item en la lista
-            const div = document.createElement('div');
-            div.className = 'sentence';
-            div.id = `s-${i}`;
-            div.innerText = cleanFrag;
-            div.onclick = () => jumpTo(i);
-            playlist.appendChild(div);
+            const span = document.createElement('span');
+            span.className = 'sentence';
+            span.id = `s-${i}`;
+            span.innerText = cleanFrag + " ";
+            span.onclick = () => jumpTo(i);
+            playlistDiv.appendChild(span);
 
-            // Crear marcadores de capítulos (si detecta palabras clave)
             const low = cleanFrag.toLowerCase();
-            if(low.includes('capítulo') || low.includes('capitulo') || low.includes('introducción')) {
+            if(low.includes('capítulo') || low.includes('capitulo') || low.includes('introducción') || low.includes('parte')) {
                 const btn = document.createElement('button');
                 btn.className = 'chapter-btn';
                 btn.innerText = cleanFrag.substring(0, 15) + "...";
@@ -115,24 +272,21 @@
                 chapters.appendChild(btn);
             }
         });
-        document.getElementById('status').innerText = "Lectura lista. " + fragments.length + " oraciones cargadas.";
+        document.getElementById('status').innerText = "Carga finalizada.";
     }
 
-    // FUNCIÓN CORE: Lee sin detenerse
     function speak(index) {
         if (index >= fragments.length || !isPlaying) {
             isPlaying = false;
-            document.getElementById('status').innerText = "Fin de la lectura.";
+            document.getElementById('btn-play').innerText = "Leer";
             return;
         }
 
         currentIndex = index;
         const utterance = new SpeechSynthesisUtterance(fragments[index]);
-        const voices = synth.getVoices();
-        utterance.voice = voices[document.getElementById('voice-select').value];
-        utterance.rate = 0.95;
+        utterance.voice = synth.getVoices()[document.getElementById('voice-select').value];
+        utterance.rate = 0.9;
 
-        // Resaltado visual y auto-scroll
         document.querySelectorAll('.sentence').forEach(s => s.classList.remove('active'));
         const el = document.getElementById(`s-${index}`);
         if(el) {
@@ -140,16 +294,8 @@
             el.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
 
-        // El truco para "No detenerse": 
-        // 1. Cancelamos cualquier proceso fantasma antes de empezar
-        // 2. Usamos el evento onend para disparar la siguiente inmediatamente
-        utterance.onend = () => {
-            if(isPlaying) speak(index + 1);
-        };
-
-        utterance.onerror = () => {
-            if(isPlaying) speak(index + 1); // Si falla una frase, salta a la siguiente
-        };
+        utterance.onend = () => { if(isPlaying) speak(index + 1); };
+        utterance.onerror = () => { if(isPlaying) speak(index + 1); };
 
         synth.speak(utterance);
     }
@@ -157,6 +303,7 @@
     function jumpTo(index) {
         synth.cancel();
         isPlaying = true;
+        document.getElementById('btn-play').innerText = "Pausar";
         speak(index);
     }
 
@@ -164,15 +311,12 @@
         if (isPlaying) {
             synth.pause();
             isPlaying = false;
-            document.getElementById('btn-play').innerText = "REANUDAR";
+            document.getElementById('btn-play').innerText = "Reanudar";
         } else {
-            if (synth.paused) {
-                synth.resume();
-            } else {
-                speak(currentIndex);
-            }
+            if (synth.paused) synth.resume();
+            else speak(currentIndex);
             isPlaying = true;
-            document.getElementById('btn-play').innerText = "PAUSAR";
+            document.getElementById('btn-play').innerText = "Pausar";
         }
     });
 
@@ -180,17 +324,15 @@
         isPlaying = false;
         synth.cancel();
         currentIndex = 0;
-        document.getElementById('btn-play').innerText = "REPRODUCIR TODO";
-        document.getElementById('status').innerText = "Detenido.";
+        document.getElementById('btn-play').innerText = "Leer";
     });
 
-    // Pequeño hack para evitar que Chrome/Edge maten el proceso en textos de 1 hora+
     setInterval(() => {
         if (isPlaying && !synth.paused) {
             synth.pause();
             synth.resume();
         }
-    }, 10000); 
+    }, 12000);
 </script>
 
 </body>
